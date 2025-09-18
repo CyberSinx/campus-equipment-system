@@ -5,6 +5,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
+import java.math.BigDecimal;
 import java.util.List;
 
 @Service
@@ -24,7 +26,7 @@ public class LoanServiceImpl implements LoanService {
     }
 
     @Override
-    public Loan createLoan(Long studentId, Long equipmentId) {
+    public Loan createLoan(Long studentId, Long equipmentId, LocalDate startDate) {
         Student student = studentRepository.findById(studentId)
                 .orElseThrow(() -> new RuntimeException("Student not found"));
         Equipment equipment = equipmentRepository.findById(equipmentId)
@@ -40,12 +42,15 @@ public class LoanServiceImpl implements LoanService {
             throw new RuntimeException("Equipment not available");
         }
 
+        LocalDate loanStart = startDate != null ? startDate : LocalDate.now();
+
         Loan loan = new Loan();
         loan.setStudent(student);
         loan.setEquipment(equipment);
-        loan.setStartDate(LocalDate.now());
-        loan.setDueDate(LocalDate.now().plusDays(7));
+        loan.setStartDate(loanStart);
+        loan.setDueDate(loanStart.plusDays(7));
         loan.setStatus(LoanStatus.ACTIVE);
+        loan.setPenalty(BigDecimal.valueOf(0.00));
 
         equipment.setAvailable(false);
         equipmentRepository.save(equipment);
@@ -54,12 +59,22 @@ public class LoanServiceImpl implements LoanService {
     }
 
     @Override
-    public Loan returnLoan(Long loanId) {
+    public Loan returnLoan(Long loanId, LocalDate returnDate) {
         Loan loan = loanRepository.findById(loanId)
                 .orElseThrow(() -> new RuntimeException("Loan not found"));
 
-        loan.setReturnDate(LocalDate.now());
+        LocalDate actualReturnDate = returnDate != null ? returnDate : LocalDate.now();
+        loan.setReturnDate(actualReturnDate);
         loan.setStatus(LoanStatus.RETURNED);
+
+        // Late penalty calculation
+        if (actualReturnDate.isAfter(loan.getDueDate())) {
+            long daysLate = ChronoUnit.DAYS.between(loan.getDueDate(), actualReturnDate);
+            BigDecimal penalty = BigDecimal.valueOf(daysLate * 50).setScale(2, BigDecimal.ROUND_HALF_UP);
+            loan.setPenalty(penalty);
+        } else {
+            loan.setPenalty(BigDecimal.valueOf(0.00));
+        }
 
         Equipment equipment = loan.getEquipment();
         equipment.setAvailable(true);

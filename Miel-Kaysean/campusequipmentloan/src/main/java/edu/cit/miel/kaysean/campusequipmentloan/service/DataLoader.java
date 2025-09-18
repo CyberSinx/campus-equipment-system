@@ -18,14 +18,12 @@ public class DataLoader implements CommandLineRunner {
 
     @Override
     public void run(String... args) throws Exception {
-        // create one student
         Student s1 = new Student();
         s1.setName("Juan Dela Cruz");
         s1.setStudentNo("2025-001");
         s1.setEmail("juan@cit.edu");
         studentRepo.save(s1);
 
-        // create two equipment items
         Equipment e1 = new Equipment();
         e1.setName("Laptop");
         e1.setType("Electronics");
