@@ -14,4 +14,9 @@ public class Student {
     private String studentNo;
     private String name;
     private String email;
+
+    @OneToOne
+    @JoinColumn(name = "user_id", referencedColumnName = "id")
+    private User user;  // each student is linked to exactly one user
 }
+
